@@ -14,15 +14,6 @@ def phi(Mstar, t, burst_ini, burst_lenght):
     return dMdt
 
 
-def deltaM_integral(Mstar, tU, burst_ini, burst_lenght, tleft, tright):
-    A = Mstar/(burst_lenght * (1.-np.exp((burst_ini - tU)/burst_lenght)))
-    if tright > tU:
-        tright = tU
-    if tright < tleft:
-        return 0.0
-    return A * burst_lenght * (np.exp(-(burst_ini - tright)/burst_lenght) - np.exp(-(burst_ini - tleft)/burst_lenght))
-
-
 def get_wl_of(header):
     from astropy import wcs
     Nl = header['NAXIS3']
@@ -76,6 +67,18 @@ def main_EW(argv):
     # plot_example_1(wl_rf, flux_rf__lyx, error_rf__lyx, 32, 32)
 
 
+
+def deltaM_integral(Mstar, tU, burst_ini, burst_lenght, tleft, tright):
+    A = Mstar / (burst_lenght * (1. - np.exp((burst_ini - tU)/burst_lenght)))
+    if tleft < burst_ini:
+        tleft = burst_ini
+    if tright > tU:
+        tright = tU
+    if tright < tleft:
+        return 0.0
+    return A * burst_lenght * (np.exp((burst_ini - tleft)/burst_lenght) - np.exp((burst_ini - tright)/burst_lenght))
+
+
 def main_CSP(argv):
     from pystarlight.util.base import StarlightBase
     base_select = 'Padova2000.salp'
@@ -84,24 +87,29 @@ def main_CSP(argv):
     M = 1e10
     tau = np.logspace(9, 11, 20)
     t0 = np.logspace(7, 10, 20)
-    t = base.ageBase
+    t = base.ageBase.max() - base.ageBase[::-1]
     steps = (t[1:] - t[:-1])/2.0
     t_edges = np.empty((len(t) + 1))
     t_edges[1:-1] = t[1:] - steps
     t_edges[0] = t[0] - steps[0]
     if t_edges[0] < 0:
-        t_edges[0] = 0
+        t_edges[0] = 0.
     t_edges[-1] = t[-1] + steps[0]
     if t_edges[-1] > t[-1]:
         t_edges[-1] = t[-1]
-    timeline = t.max() - t[::-1]
-    t_edges = t_edges[::-1]
-    dM = []
-    for i, (l, r) in enumerate(zip(t_edges[0:-1], t_edges[1:])):
-        print l, timeline[i], r
-        dM.append(deltaM_integral(M, timeline[i], 0, 1e9, l, r))
-    dM = np.array(dM)
-    F__l = base.f_ssp.sum(axis=0) * dM[::-1, np.newaxis]
+    M__t0taul = np.ndarray((len(t0), len(tau), len(base.l_ssp)), dtype='float')
+    dM__t0taut = np.ndarray((len(t0), len(tau), base.nAges), dtype='float')
+    for it0, _t0 in enumerate(t0):
+        for itau, _tau in enumerate(tau):
+            dM = []
+            for i in range(len(t)):
+                l, r = t_edges[i], t_edges[i+1]
+                dM.append(deltaM_integral(M, t.max(), _t0, _tau, l, r))
+                #print l, t[i], r
+            print 't0:', _t0,' tau:', _tau, ' dM:', dM[-1]
+            dM = np.array(dM)
+            M__t0taul[it0, itau, :] = np.tensordot(base.f_ssp.sum(axis=0), dM[::-1], (0, 0))
+            dM__t0taut[it0, itau, :] = dM
     sel = np.bitwise_and(np.greater_equal(base.l_ssp, 3600), np.less(base.l_ssp, 7000))
 
 if __name__ == '__main__':
