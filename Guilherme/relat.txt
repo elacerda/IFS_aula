@@ -1,0 +1,20 @@
+Exercício 1:
+Abri o cubo NGC0036
+
+CDELT3 = 2.0
+CRVAL3 = 3701.0
+
+NED z: 0.020114 
+CALIFA z: 0.01992
+
+lines emit: 
+lines_emit = np.array([4861.3, 5006.8, 6562.8, 6583.5, 6730.8])
+
+lines obs:
+lines_obs = (1 + 0.020114) * lines_emit
+np.array([ 4959.0801882,  5107.5067752,  6694.8041592,  6715.920519 , 6866.1833112])
+lines_obs = np.array([ 4959.1,  5107.5,  6694.8,  6715.9 , 6866.2])
+
+spec_pix = np.round((lines_obs - CRVAL3)/CDELT3, 0)
+np.array([629.0, 703.0, 1497.0, 1507.0, 1583.0])
+
